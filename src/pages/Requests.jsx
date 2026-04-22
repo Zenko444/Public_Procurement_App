@@ -18,8 +18,10 @@ import StatusBadge from '../components/ui/StatusBadge';
 import Button from '../components/ui/Button';
 
 export default function Requests() {
-  const { requests, loading, searchTerm } = useRequests();
+  const { requests, loading, searchTerm, dateFilter, statusFilter, serviceFilter } = useRequests();
   const { cityHall } = useAuth();
+  const hasActiveFilters =
+    !!searchTerm || dateFilter !== 'all' || statusFilter !== 'all' || serviceFilter !== 'all';
 
   if (loading) {
     return (
@@ -37,6 +39,9 @@ export default function Requests() {
           <p className="text-lg text-slate-500 font-extralight">
             {cityHall?.name} • {requests.length} cereri
             {searchTerm && ` • Căutare: "${searchTerm}"`}
+            {dateFilter !== 'all' && ` • Perioadă: ${dateFilter}`}
+            {statusFilter !== 'all' && ` • Status: ${statusFilter}`}
+            {serviceFilter !== 'all' && ` • Serviciu: ${serviceFilter}`}
           </p>
         </div>
         <Link to="/create-request">
@@ -56,10 +61,10 @@ export default function Requests() {
             <Inbox className="w-10 h-10 text-slate-400" />
           </div>
           <h3 className="text-xl font-medium text-slate-800 mb-2">
-            {searchTerm ? 'Nu s-au găsit rezultate' : 'Nu aveți cereri'}
+            {hasActiveFilters ? 'Nu s-au găsit rezultate' : 'Nu aveți cereri'}
           </h3>
           <p className="text-lg text-slate-500 font-extralight mb-6">
-            {searchTerm 
+            {hasActiveFilters 
               ? 'Încercați o altă căutare sau creați o cerere nouă.'
               : 'Creați prima cerere pentru a solicita servicii de la furnizori.'}
           </p>
