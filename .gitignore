@@ -4,5 +4,6 @@ git.env
 .env.test
 .env.production
 .env.*
+.env
 node_modules
 dist/
