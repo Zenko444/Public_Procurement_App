@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
+import { useSearchParams } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../context/AuthContext";
 import toast from "react-hot-toast";
@@ -6,9 +7,34 @@ import { format } from "date-fns";
 
 export function useRequests() {
   const { cityHall } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState("");
+  const searchTerm = searchParams.get("q") || "";
+  const dateFilter = searchParams.get("date") || "all";
+  const statusFilter = searchParams.get("status") || "all";
+  const serviceFilter = searchParams.get("service") || "all";
+
+  const updateParam = useCallback(
+    (key, value) => {
+      const params = new URLSearchParams(searchParams);
+      if (!value || value === "all") {
+        params.delete(key);
+      } else {
+        params.set(key, value);
+      }
+      setSearchParams(params);
+    },
+    [searchParams, setSearchParams]
+  );
+
+  const setSearchTerm = useCallback(
+    (value) => updateParam("q", value?.trim() || ""),
+    [updateParam]
+  );
+  const setDateFilter = useCallback((value) => updateParam("date", value), [updateParam]);
+  const setStatusFilter = useCallback((value) => updateParam("status", value), [updateParam]);
+  const setServiceFilter = useCallback((value) => updateParam("service", value), [updateParam]);
 
   const fetchRequests = useCallback(async () => {
     if (!cityHall) {
@@ -78,16 +104,50 @@ export function useRequests() {
   }, [cityHall]);
 
   const filteredRequests = useMemo(() => {
-    if (!searchTerm) return requests;
-
     const lowerSearch = searchTerm.toLowerCase();
-    return requests.filter(
-      (req) =>
+    const now = new Date();
+
+    return requests.filter((req) => {
+      const searchMatches =
+        !searchTerm ||
         req.service_name?.toLowerCase().includes(lowerSearch) ||
         req.provider_name?.toLowerCase().includes(lowerSearch) ||
-        req.title?.toLowerCase().includes(lowerSearch)
-    );
-  }, [requests, searchTerm]);
+        req.title?.toLowerCase().includes(lowerSearch);
+
+      const statusMatches =
+        statusFilter === "all" || req.status?.toLowerCase() === statusFilter.toLowerCase();
+
+      const serviceMatches =
+        serviceFilter === "all" || req.service_name?.toLowerCase() === serviceFilter.toLowerCase();
+
+      let dateMatches = true;
+      if (dateFilter !== "all" && req.created_at) {
+        const createdAt = new Date(req.created_at);
+        if (dateFilter === "day") {
+          dateMatches =
+            createdAt.getFullYear() === now.getFullYear() &&
+            createdAt.getMonth() === now.getMonth() &&
+            createdAt.getDate() === now.getDate();
+        } else if (dateFilter === "month") {
+          dateMatches =
+            createdAt.getFullYear() === now.getFullYear() &&
+            createdAt.getMonth() === now.getMonth();
+        } else if (dateFilter === "year") {
+          dateMatches = createdAt.getFullYear() === now.getFullYear();
+        }
+      }
+
+      return searchMatches && statusMatches && serviceMatches && dateMatches;
+    });
+  }, [requests, searchTerm, dateFilter, statusFilter, serviceFilter]);
+
+  const statusOptions = useMemo(() => {
+    return [...new Set(requests.map((req) => req.status).filter(Boolean))];
+  }, [requests]);
+
+  const serviceOptions = useMemo(() => {
+    return [...new Set(requests.map((req) => req.service_name).filter(Boolean))];
+  }, [requests]);
 
   const createRequest = useCallback(
     async (requestData) => {
@@ -219,7 +279,15 @@ export function useRequests() {
     requests: filteredRequests,
     loading,
     searchTerm,
+    dateFilter,
+    statusFilter,
+    serviceFilter,
+    statusOptions,
+    serviceOptions,
     setSearchTerm,
+    setDateFilter,
+    setStatusFilter,
+    setServiceFilter,
     createRequest,
     updateRequest,
     deleteRequest,

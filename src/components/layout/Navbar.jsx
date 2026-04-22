@@ -13,9 +13,13 @@ import {
   Check,
   Info,
   AlertTriangle,
-  AlertCircle
+  AlertCircle,
+  CalendarDays,
+  CircleDashed,
+  Briefcase
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { useTheme } from '../../context/ThemeContext';
 import { useNotifications } from '../../hooks/useNotifications';
 import { useRequests } from '../../hooks/useRequests';
 import { format } from 'date-fns';
@@ -23,8 +27,20 @@ import { ro } from 'date-fns/locale';
 
 export default function Navbar() {
   const { user, cityHall, signOut } = useAuth();
+  const { isDarkMode, toggleTheme } = useTheme();
   const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications();
-  const { searchTerm, setSearchTerm } = useRequests();
+  const {
+    searchTerm,
+    dateFilter,
+    statusFilter,
+    serviceFilter,
+    statusOptions,
+    serviceOptions,
+    setSearchTerm,
+    setDateFilter,
+    setStatusFilter,
+    setServiceFilter,
+  } = useRequests();
   const navigate = useNavigate();
   const location = useLocation();
   const [showProfileMenu, setShowProfileMenu] = useState(false);
@@ -54,6 +70,10 @@ export default function Navbar() {
     }, 300);
     return () => clearTimeout(debounce);
   }, [localSearch, setSearchTerm]);
+
+  useEffect(() => {
+    setLocalSearch(searchTerm);
+  }, [searchTerm]);
 
   const handleSignOut = async () => {
     await signOut();
@@ -87,30 +107,84 @@ export default function Navbar() {
         </Link>
 
         {user && location.pathname === '/requests' && (
-          <div className="flex-1 max-w-xl mx-8">
-            <div className="relative">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-              <input
-                type="text"
-                placeholder="Caută după serviciu sau furnizor..."
-                value={localSearch}
-                onChange={(e) => setLocalSearch(e.target.value)}
-                className="w-full h-11 pl-12 pr-4 rounded-xl bg-slate-50 border border-slate-200 text-lg font-extralight text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-baby-blue/50 focus:border-baby-blue transition-all"
-              />
-              {localSearch && (
-                <button
-                  onClick={() => setLocalSearch('')}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+          <div className="flex-1 max-w-4xl mx-8">
+            <div className="flex items-center gap-2">
+              <div className="relative flex-1">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                <input
+                  type="text"
+                  placeholder="Caută după serviciu, furnizor sau titlu..."
+                  value={localSearch}
+                  onChange={(e) => setLocalSearch(e.target.value)}
+                  className="w-full h-11 pl-12 pr-10 rounded-xl bg-slate-50 border border-slate-200 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-baby-blue/50 focus:border-baby-blue transition-all"
+                />
+                {localSearch && (
+                  <button
+                    onClick={() => setLocalSearch('')}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+
+              <div className="relative">
+                <CalendarDays className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                <select
+                  value={dateFilter}
+                  onChange={(e) => setDateFilter(e.target.value)}
+                  className="h-11 w-36 pl-9 pr-3 rounded-xl bg-slate-50 border border-slate-200 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-baby-blue/50"
                 >
-                  <X className="w-4 h-4" />
-                </button>
-              )}
+                  <option value="all">Toate datele</option>
+                  <option value="day">Ziua curenta</option>
+                  <option value="month">Luna curenta</option>
+                  <option value="year">Anul curent</option>
+                </select>
+              </div>
+
+              <div className="relative">
+                <CircleDashed className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                <select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  className="h-11 w-36 pl-9 pr-3 rounded-xl bg-slate-50 border border-slate-200 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-baby-blue/50"
+                >
+                  <option value="all">Toate statusurile</option>
+                  {statusOptions.map((status) => (
+                    <option key={status} value={status}>
+                      {status}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="relative">
+                <Briefcase className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                <select
+                  value={serviceFilter}
+                  onChange={(e) => setServiceFilter(e.target.value)}
+                  className="h-11 w-40 pl-9 pr-3 rounded-xl bg-slate-50 border border-slate-200 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-baby-blue/50"
+                >
+                  <option value="all">Toate serviciile</option>
+                  {serviceOptions.map((service) => (
+                    <option key={service} value={service}>
+                      {service}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
           </div>
         )}
 
         {user && (
           <div className="flex items-center gap-4">
+            <button
+              onClick={toggleTheme}
+              className="h-10 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-100 text-sm font-medium transition-colors"
+            >
+              {isDarkMode ? 'LIGHT MODE' : 'DARK MODE'}
+            </button>
             <div ref={notificationRef} className="relative">
               <button
                 onClick={() => setShowNotifications(!showNotifications)}

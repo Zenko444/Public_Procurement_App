@@ -4,6 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import { Settings, Layers, Building2, FileText, LayoutDashboard, MessageSquare } from 'lucide-react';
 import Navbar from './Navbar';
 import Footer from './Footer';
+import ChatbotWidget from '../chatbot/ChatbotWidget';
 import { Loader2 } from 'lucide-react';
 
 export default function DashboardLayout() {
@@ -33,6 +34,7 @@ export default function DashboardLayout() {
       <main className="flex-1">
         <Outlet />
       </main>
+      <ChatbotWidget />
       <Footer />
     </div>
   );

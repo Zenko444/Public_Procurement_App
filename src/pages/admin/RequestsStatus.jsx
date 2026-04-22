@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { motion, AnimatePresence } from "motion/react";
 import {
@@ -14,13 +14,16 @@ import {
   Trash2,
   Eye,
   AlertTriangle,
+  Download,
 } from "lucide-react";
 import { format } from "date-fns";
 import { ro } from "date-fns/locale";
 import toast from "react-hot-toast";
 import { supabase } from "../../lib/supabase";
+import { useRequests } from "../../hooks/useRequests";
 import StatusBadge from "../../components/ui/StatusBadge";
 import Button from "../../components/ui/Button";
+import { exportRequestsToCsv, filterRequestsFromToday } from "../../lib/requestExport";
 
 const statusOptions = [
   { id: "pending", name: "In asteptare", icon: Clock, color: "text-amber-600" },
@@ -30,36 +33,13 @@ const statusOptions = [
 
 export default function RequestsStatusAdmin() {
   const navigate = useNavigate();
-  const [requests, setRequests] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const { requests, loading, refresh } = useRequests();
   const [editingRequest, setEditingRequest] = useState(null);
-  const [deleteRequest, setDeleteRequest] = useState(null);
+  const [requestToDelete, setRequestToDelete] = useState(null);
   const [newStatus, setNewStatus] = useState("");
   const [statusNotes, setStatusNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [deleting, setDeleting] = useState(false);
-
-  const fetchAllRequests = useCallback(async () => {
-    setLoading(true);
-    try {
-      const { data, error } = await supabase
-        .from("requests")
-        .select("*")
-        .order("created_at", { ascending: false });
-
-      if (error) throw error;
-      setRequests(data || []);
-    } catch (error) {
-      console.error("Error fetching requests:", error);
-      toast.error("Eroare la incarcarea cererilor");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchAllRequests();
-  }, [fetchAllRequests]);
 
   const openEditModal = (request) => {
     setEditingRequest(request);
@@ -91,7 +71,7 @@ export default function RequestsStatusAdmin() {
 
       toast.success("Statusul cererii a fost actualizat!");
       closeEditModal();
-      fetchAllRequests();
+      refresh();
     } catch (error) {
       console.error("Error updating status:", error);
       toast.error("Eroare la actualizarea statusului");
@@ -101,26 +81,38 @@ export default function RequestsStatusAdmin() {
   };
 
   const handleDelete = async () => {
-    if (!deleteRequest) return;
+    if (!requestToDelete) return;
 
     setDeleting(true);
     try {
       const { error } = await supabase
         .from("requests")
         .delete()
-        .eq("id", deleteRequest.id);
+        .eq("id", requestToDelete.id);
 
       if (error) throw error;
 
       toast.success("Cererea a fost stearsa!");
-      setDeleteRequest(null);
-      fetchAllRequests();
+      setRequestToDelete(null);
+      refresh();
     } catch (error) {
       console.error("Error deleting request:", error);
       toast.error("Eroare la stergerea cererii");
     } finally {
       setDeleting(false);
     }
+  };
+
+  const handleExportToday = () => {
+    const todayRequests = filterRequestsFromToday(requests);
+
+    if (todayRequests.length === 0) {
+      toast("Nu exista cereri primite astazi pentru export.");
+      return;
+    }
+
+    exportRequestsToCsv(todayRequests);
+    toast.success(`Export CSV reusit: ${todayRequests.length} cereri.`);
   };
 
   if (loading) {
@@ -135,21 +127,26 @@ export default function RequestsStatusAdmin() {
 
   return (
     <div id="requests-status-admin-page" className="max-w-[1800px] mx-auto px-6 py-8">
-      <div className="flex items-center gap-4 mb-8">
-        <button
-          onClick={() => navigate("/requests")}
-          className="w-10 h-10 rounded-xl bg-slate-100 hover:bg-slate-200 flex items-center justify-center transition-colors"
-        >
-          <ArrowLeft className="w-5 h-5 text-slate-600" />
-        </button>
-        <div>
-          <h1 className="text-3xl font-semibold text-slate-800">
-            Administrare Cereri
-          </h1>
-          <p className="text-lg text-slate-500 font-extralight">
-            {requests.length} cereri in total
-          </p>
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
+        <div className="flex items-center gap-4">
+          <button
+            onClick={() => navigate("/requests")}
+            className="w-10 h-10 rounded-xl bg-slate-100 hover:bg-slate-200 flex items-center justify-center transition-colors"
+          >
+            <ArrowLeft className="w-5 h-5 text-slate-600" />
+          </button>
+          <div>
+            <h1 className="text-3xl font-semibold text-slate-800">
+              Administrare Cereri
+            </h1>
+            <p className="text-lg text-slate-500 font-extralight">
+              {requests.length} cereri in total
+            </p>
+          </div>
         </div>
+        <Button onClick={handleExportToday} icon={Download}>
+          Export CSV ziua curenta
+        </Button>
       </div>
 
       <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
@@ -244,7 +241,7 @@ export default function RequestsStatusAdmin() {
                         <Check className="w-5 h-5 text-baby-dark" />
                       </button>
                       <button
-                        onClick={() => setDeleteRequest(request)}
+                        onClick={() => setRequestToDelete(request)}
                         className="p-2 hover:bg-red-50 rounded-lg transition-colors"
                         title="Sterge"
                       >
@@ -355,13 +352,13 @@ export default function RequestsStatusAdmin() {
       </AnimatePresence>
 
       <AnimatePresence>
-        {deleteRequest && (
+        {requestToDelete && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
-            onClick={() => setDeleteRequest(null)}
+            onClick={() => setRequestToDelete(null)}
           >
             <motion.div
               initial={{ scale: 0.95, opacity: 0 }}
@@ -385,13 +382,13 @@ export default function RequestsStatusAdmin() {
               </div>
 
               <p className="text-lg text-slate-600 font-extralight mb-6">
-                Esti sigur ca vrei sa stergi cererea "{deleteRequest.title}"?
+                Esti sigur ca vrei sa stergi cererea "{requestToDelete.title}"?
               </p>
 
               <div className="flex justify-end gap-3">
                 <Button
                   variant="outline"
-                  onClick={() => setDeleteRequest(null)}
+                  onClick={() => setRequestToDelete(null)}
                 >
                   Anuleaza
                 </Button>

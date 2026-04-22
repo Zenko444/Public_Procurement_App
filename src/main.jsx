@@ -4,38 +4,41 @@ import { BrowserRouter } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import App from './App';
 import { AuthProvider } from './context/AuthContext';
+import { ThemeProvider } from './context/ThemeContext';
 import './index.css';
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <BrowserRouter>
-      <AuthProvider>
-        <App />
-        <Toaster 
-          position="top-center"
-          toastOptions={{
-            duration: 4000,
-            style: {
-              background: '#1e293b',
-              color: '#f8fafc',
-              fontSize: '14px',
-              fontWeight: '400',
-            },
-            success: {
-              iconTheme: {
-                primary: '#22c55e',
-                secondary: '#f8fafc',
+      <ThemeProvider>
+        <AuthProvider>
+          <App />
+          <Toaster 
+            position="top-center"
+            toastOptions={{
+              duration: 4000,
+              style: {
+                background: '#1e293b',
+                color: '#f8fafc',
+                fontSize: '14px',
+                fontWeight: '400',
               },
-            },
-            error: {
-              iconTheme: {
-                primary: '#ef4444',
-                secondary: '#f8fafc',
+              success: {
+                iconTheme: {
+                  primary: '#22c55e',
+                  secondary: '#f8fafc',
+                },
               },
-            },
-          }}
-        />
-      </AuthProvider>
+              error: {
+                iconTheme: {
+                  primary: '#ef4444',
+                  secondary: '#f8fafc',
+                },
+              },
+            }}
+          />
+        </AuthProvider>
+      </ThemeProvider>
     </BrowserRouter>
   </React.StrictMode>
 );
